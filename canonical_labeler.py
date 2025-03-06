@@ -24,6 +24,7 @@ class canonical_labeler:
         
         while curr is not None:
             curr = curr.process(self.best_invar_node, theta)
+            if curr is not None: curr.visualize()
             self.nodes_processed += 1
             if curr is not None and curr.is_discrete():
                 if curr.cmp < 0:

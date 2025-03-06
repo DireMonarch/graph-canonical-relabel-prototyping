@@ -30,8 +30,20 @@ class path_node:
             curr.size += 1
             curr = curr.parent
         
-        print(f'DEBUG NODE CREATED path: {visualize_path(self.path, self.dl)}  partion: {visualize_partition(self.partition, self.dl)}')
+        self.debug = False
         
+        if self.debug: print(f'C {visualize_path(self.path, self.dl)}  partion: {visualize_partition(self.partition, self.dl)}  cmp: {self.cmp}')
+        
+        # if self.path == [0,1,3]:
+        #     real_perm = self.permutation(debug=True)
+        #     test_perm = [(2,3),(3,7),(7,6),(6,4),(4,5),(5,2)]
+        #     print(real_perm)
+        #     self._calc_invariant(useperm=real_perm)
+        #     print(visualize_graph(self.invariant, self.dl))
+        #     print(test_perm)
+        #     self._calc_invariant(useperm=test_perm)
+        #     print(visualize_graph(self.invariant, self.dl))
+        #     exit()
         
     def next(self):
         pass
@@ -39,12 +51,13 @@ class path_node:
     def is_discrete(self):
         return is_discrete(self.partition)
     
-    def permutation(self, source=None):
+    def permutation(self, source=None, debug=False):
         if not self.is_discrete():
             return []
         
         swaps = []
         if source is None:
+            if debug: print(f'S {visualize_partition([[i] for i in range(len(self.partition))])}\nv {visualize_partition(self.partition)}')
             for i, v in enumerate(self.partition):
                 if(i != v[0]):
                     if (v[0], i) not in swaps and (i, v[0]) not in swaps:
@@ -52,13 +65,14 @@ class path_node:
         else:
             if not source.is_discrete():
                 return []
+            if debug: print(f'S {source.partition}\nv {self.partition}')
             for i in range(len(self.partition)):
                 if self.partition[i] != source.partition[i]:
                     swap = [source.partition[i][0], self.partition[i][0]]
                     swap.sort()
                     if swap not in swaps:
                         swaps.append(swap)
-        swaps.sort()
+        # swaps.sort()
         return swaps
     
     def _calc_invariant(self):
@@ -101,8 +115,9 @@ class path_node:
                 self.branches[self.target_branch].cmp = compare_invariant(self.branches[self.target_branch].invariant, best_invariant.invariant)
         else:
             self.branches[self.target_branch].cmp = 0
-        
-        # print(f'\tDEBUG path: {visualize_path(self.branches[self.target_branch].path, self.dl)}  cmp: {self.branches[self.target_branch].cmp}')
+        # print(best_invariant)
+        # if self.debug: print(f'\tP {visualize_path(self.branches[self.target_branch].path, self.dl)}  cmp: {self.branches[self.target_branch].cmp}  permutation: {visualize_partition(self.branches[self.target_branch].permutation(debug=True), self.dl)}')
+        # if self.debug and self.branches[self.target_branch].path[0] == 0: print(visualize_graph(self.branches[self.target_branch].invariant, self.dl))
         # if self.branches[self.target_branch].path[0]==0:
         #     if best_invariant is not None:
         #         print(f'Best: \n{visualize_graph(best_invariant.invariant, self.dl)}')
@@ -159,19 +174,19 @@ class path_node:
                 if inpath:
                     current_auto_position = auto
                     while current_auto_position.path != curr.path:
-                        fixes.append(current_auto_position.fix())
+                        fixes.append(current_auto_position.fix())   # swapping to new mcr...
+                        # fixes.append(current_auto_position.mcr())
                         current_auto_position = current_auto_position.parent                        
-                # print(f'auto: {visualize_path(auto.path, self.dl)}   curr: {visualize_path(curr.path, self.dl)}  in?  {inpath}')
+                if self.debug: print(f'A {visualize_path(auto.path, self.dl)}   curr: {visualize_path(curr.path, self.dl)}  in?  {inpath}')
             curr.prune_automorphisms(fixes)
         return curr
     
     
-    # def mcr(self):
-    #     value = []
-    #     for cell in self.partition:
-    #         if len(cell) > 1:
-    #             value.append(min(cell))
-    #     return value
+    def mcr(self):
+        value = []
+        for cell in self.partition:
+            value.append(min(cell))
+        return value
 
     # def mcrs(self):
     #     value =[self.mcr()]
@@ -193,7 +208,7 @@ class path_node:
             old_W = self.W.copy()
             for fix in fixes:
                 self.W = list(set(self.W) & set(fix))
-            # print(f'DEBUG PRUNE: {visualize_path(self.path, self.dl)}  Fixes: {visualize_partition(fixes, self.dl)}  old W: {visualize_path(old_W, self.dl)}  W: {visualize_path(self.W, self.dl)}')
+            # print(f'{visualize_path(self.path, self.dl)} PRUNE Fixes: {visualize_partition(fixes, self.dl)}  old W: {visualize_path(old_W, self.dl)}  W: {visualize_path(self.W, self.dl)}')
 
     
     # def fixes(self):
@@ -203,15 +218,20 @@ class path_node:
     #     return value
     
     def visualize(self):
+        cmp = self.cmp if self.is_discrete() else '-'
+        print(f'V {visualize_path(self.path, self.dl)}  partion: {visualize_partition(self.partition, self.dl)}  cmp: {cmp}')
+        if cmp in [-1, 0]:
+            print(f'{visualize_partition(self.permutation(), self.dl)}')
+            print(f'{visualize_graph(self.invariant, self.dl)}')
 
-        print(f'\n{visualize_path(self.path, self.dl)}')
-        print(f'\tPartition: {visualize_partition(self.partition, self.dl)}')
-        # print(self.levelast_hop_from_parent)
-        # print(f'\tLevel = {self.level},  Path: {path},  cmp: {self.cmp}')
-        # print(f'\tW: {self.W}')
-        # print(f'\tBest Invariant: {self.best_invariant}')
-        # print(f'\tChildren Generated: {list(self.branches.keys())}')
-        print(f'\tPermutation: {visualize_partition(self.permutation(), self.dl)}')
-        print('')
+        # print(f'\n{visualize_path(self.path, self.dl)}')
+        # print(f'\tPartition: {visualize_partition(self.partition, self.dl)}')
+        # # print(self.levelast_hop_from_parent)
+        # # print(f'\tLevel = {self.level},  Path: {path},  cmp: {self.cmp}')
+        # # print(f'\tW: {self.W}')
+        # # print(f'\tBest Invariant: {self.best_invariant}')
+        # # print(f'\tChildren Generated: {list(self.branches.keys())}')
+        # print(f'\tPermutation: {visualize_partition(self.permutation(), self.dl)}')
+        # print('')
 
 

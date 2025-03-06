@@ -30,6 +30,7 @@ def main():
     with open(filename, 'r') as infile:
         G = json.load(infile)
     
+    # print(visualize_graph(G, '1'))
     
     labeler = canonical_labeler(G)
     if '--label' in sys.argv:

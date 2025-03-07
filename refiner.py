@@ -1,4 +1,6 @@
 
+import copy
+
 __DEBUG__ = False
 
 def is_discrete(pi):
@@ -132,3 +134,45 @@ def compare_invariant(a, b):
     return 0
 
 
+def mcr(partition):
+    value = []
+    for cell in partition:
+        value.append(min(cell))
+    return value
+
+
+def _orbit_index(orbit, v):
+    for i, cell in enumerate(orbit):
+        if v in cell:
+            return i
+    return None
+
+def _merge_orbit_cells(orbit, indices):
+    merge = []
+    new_orbit = []
+    for i, cell in enumerate(orbit):
+        if i in indices:
+            merge += orbit[i]
+        else:
+            new_orbit.append(cell)
+    if len(merge) > 0:
+        new_orbit.append(list(set(merge)))
+    new_orbit.sort()
+    return new_orbit
+    
+        
+
+
+def merge_permutation_into_orbit(perm, dest_orbit):
+    new_orbit = copy.deepcopy(dest_orbit)
+    merge_indices = []
+    for cell in perm:
+        merge_indices = []
+        for v in cell:
+            if len(cell) > 1:
+                i = _orbit_index(new_orbit, v)
+                if i is not None:
+                    merge_indices.append(i)
+        new_orbit = _merge_orbit_cells(new_orbit, merge_indices)
+
+    return new_orbit        

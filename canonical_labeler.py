@@ -1,6 +1,6 @@
 import utility
 from path_node import path_node
-from refiner import compare_invariant
+from refiner import mcr, merge_permutation_into_orbit
 
 class canonical_labeler:
     def __init__(self, G):
@@ -19,21 +19,24 @@ class canonical_labeler:
         self.automorphisms = []
         
         self.nodes_processed = 0
-        
-        theta = []
+        self.theta = [[i] for i in range(len(self.G[0]))]
+        self.theta_mcr = mcr(self.theta)
         
         while curr is not None:
-            curr = curr.process(self.best_invar_node, theta)
+            curr = curr.process(self.best_invar_node, self.theta_mcr)
             if curr is not None: curr.visualize()
             self.nodes_processed += 1
             if curr is not None and curr.is_discrete():
                 if curr.cmp < 0:
                     self.best_invar_node = curr
                     self.automorphisms = []
-                    theta = [curr]
+                    self.theta = [[i] for i in range(len(self.G[0]))]
+                    self.theta_mcr = mcr(self.theta)
                 elif curr.cmp == 0:
+                    ##   Found an automorphism
                     self.automorphisms.append(curr)
-                    theta.append(curr)
+                    self.theta = merge_permutation_into_orbit(curr.permutation(self.best_invar_node), self.theta)
+                    self.theta_mcr = mcr(self.theta)
                     
         self.CL = self.best_invar_node.invariant
         self.tree_size = tree_root.size

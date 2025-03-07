@@ -1,7 +1,7 @@
 import copy
 
 from utility import *
-from refiner import refine, is_discrete, compare_invariant, first_index_of_non_fixed_cell_of_smallest_size as tc
+from refiner import refine, is_discrete, compare_invariant, mcr, first_index_of_non_fixed_cell_of_smallest_size as tc
 
 class path_node:
     def __init__(self, G, parent, last_hop, prune_autos=True):
@@ -34,19 +34,8 @@ class path_node:
         
         if self.debug: print(f'C {visualize_path(self.path, self.dl)}  partion: {visualize_partition(self.partition, self.dl)}  cmp: {self.cmp}')
         
-        # if self.path == [0,1,3]:
-        #     real_perm = self.permutation(debug=True)
-        #     test_perm = [(2,3),(3,7),(7,6),(6,4),(4,5),(5,2)]
-        #     print(real_perm)
-        #     self._calc_invariant(useperm=real_perm)
-        #     print(visualize_graph(self.invariant, self.dl))
-        #     print(test_perm)
-        #     self._calc_invariant(useperm=test_perm)
-        #     print(visualize_graph(self.invariant, self.dl))
-        #     exit()
+
         
-    def next(self):
-        pass
     
     def is_discrete(self):
         return is_discrete(self.partition)
@@ -55,53 +44,98 @@ class path_node:
         if not self.is_discrete():
             return []
         
+        if source is not None and not source.is_discrete():
+            return []
+        
+        source_partition = source.partition if source is not None else [[i] for i in range(len(self.partition))]
+        
+        # Get pairwise swaps that don't really work, need to be combined
         swaps = []
-        if source is None:
-            if debug: print(f'S {visualize_partition([[i] for i in range(len(self.partition))])}\nv {visualize_partition(self.partition)}')
-            for i, v in enumerate(self.partition):
-                if(i != v[0]):
-                    if (v[0], i) not in swaps and (i, v[0]) not in swaps:
-                        swaps.append((i, v[0]))
-        else:
-            if not source.is_discrete():
-                return []
-            if debug: print(f'S {source.partition}\nv {self.partition}')
-            for i in range(len(self.partition)):
-                if self.partition[i] != source.partition[i]:
-                    swap = [source.partition[i][0], self.partition[i][0]]
-                    swap.sort()
-                    if swap not in swaps:
-                        swaps.append(swap)
-        # swaps.sort()
-        return swaps
+
+        for i in range(len(self.partition)):
+            if self.partition[i] != source_partition[i]:
+                swap = [self.partition[i][0], source_partition[i][0]]
+                if swap not in swaps and [swap[1], swap[0]] not in swaps:
+                    swaps.append(swap)
+
+        # Combine:
+
+        perm = []
+        curr_cell =[]
+        while len(swaps) > 0:
+            if len(curr_cell) == 0:
+                ## Cell is empty, grab next cell from swaps
+                curr_cell = swaps.pop(0)
+            else:
+                ## Cell is not empty, look for another cell in swaps that starts the last elemnt of cell
+                found_next = None
+                for swap_cell in swaps:
+                    if curr_cell[-1] == swap_cell[0]:
+                        found_next = swap_cell
+                        break
+                if found_next != None:
+                    if curr_cell[0] == found_next[1]:
+                        ## if we are here, then we found the end of the cycle
+                        perm.append(curr_cell)
+                        curr_cell = []
+                    else:
+                        curr_cell.append(found_next[1])   # add the next step to curr cell
+                    swaps.remove(found_next)  # remove the found cell from swaps
+                else:
+                    perm.append(curr_cell)  #if we are here, we didn't find another cell in the chain
+                    curr_cell = [] # Start a new cell for next round
+        if len(curr_cell) > 0:
+            perm.append(curr_cell)
+            
+            
+        return perm       
+        
     
     def _calc_invariant(self):
         perm = self.permutation()
         inv = copy.deepcopy(self.G)
-        
+                       
         for p in perm:
-            # First swap rows #
-            temp = inv[p[0]]
-            inv[p[0]] = copy.deepcopy(inv[p[1]])
-            inv[p[1]] = copy.deepcopy(temp)
-            
-            # Then swap columns #
-            for i in range(len(inv[0])):
-                temp = inv[i][p[0]]
-                inv[i][p[0]] = inv[i][p[1]]
-                inv[i][p[1]] = temp
+            if len(p) > 1:
+                di = p[0]
+                for si in p[1:]:
+                    # First swap rows #
+                    temp = inv[di]
+                    inv[di] = inv[si]
+                    inv[si] = temp
+                    
+                    # Then swap columns #
+                    for i in range(len(inv[0])):
+                        temp = inv[i][di]
+                        inv[i][di] = inv[i][si]
+                        inv[i][si] = temp            
+                
+                
         return inv
-    
-    def process_node(self, best_invariant, theta):
+
+
+    def process(self, best_invariant, theta):
+        if self.is_discrete():
+            return self.process_leaf(best_invariant, theta)
+        else:
+            return self.process_node(best_invariant, theta)
+        
+            
+    def process_node(self, best_invariant, theta_mcr):
+        if self.debug: print(f'P {visualize_path(self.path, self.dl)}  tc {self.target_cell}, {visualize_path(self.partition[self.target_cell], self.dl) if self.target_cell > -1 else []}   W {visualize_path(self.W, self.dl)}')
         if self.target_cell == -1:
             self.target_cell = tc(self.partition)
             self.W = self.partition[self.target_cell].copy()
         
-
+        ## PRUNE
         
+        # W = list(set(self.W) & set(mcr(theta)))
+        # if W != self.W:
+        #     if self.debug: print(f'R {visualize_path(self.path, self.dl)}  OLD: {visualize_path(self.W, self.dl)}  NEW: {visualize_path(W, self.dl)}')
+        #     self.W = W
         
         if len(self.W) == 0:
-            return self.backup(theta)
+            return self.backtrack(theta_mcr)
         
         self.target_branch = min(self.W)
         self.W.remove(self.target_branch)
@@ -115,15 +149,6 @@ class path_node:
                 self.branches[self.target_branch].cmp = compare_invariant(self.branches[self.target_branch].invariant, best_invariant.invariant)
         else:
             self.branches[self.target_branch].cmp = 0
-        # print(best_invariant)
-        # if self.debug: print(f'\tP {visualize_path(self.branches[self.target_branch].path, self.dl)}  cmp: {self.branches[self.target_branch].cmp}  permutation: {visualize_partition(self.branches[self.target_branch].permutation(debug=True), self.dl)}')
-        # if self.debug and self.branches[self.target_branch].path[0] == 0: print(visualize_graph(self.branches[self.target_branch].invariant, self.dl))
-        # if self.branches[self.target_branch].path[0]==0:
-        #     if best_invariant is not None:
-        #         print(f'Best: \n{visualize_graph(best_invariant.invariant, self.dl)}')
-        #     else:
-        #         print(f'Best: \nNone')
-        #     print(f'Curr: \n{visualize_graph(self.branches[self.target_branch].invariant, self.dl)}')
         
         if self.branches[self.target_branch].cmp <= 0:
             return self.branches[self.target_branch]
@@ -132,7 +157,7 @@ class path_node:
         return self
         
     
-    def process_leaf(self, theta):
+    def process_leaf(self, best_invariant, theta_mcr):
         '''
         Processes a leave node in the tree.
         
@@ -144,41 +169,63 @@ class path_node:
             permutation of the current partition, which is an automorphism generator
         '''
         
-        return self.backup(theta)
+        to = None if self.cmp == -1 else self.greatest_common_ancestor(best_invariant)
+        # if self.debug: print(f'T {visualize_path(self.path, self.dl)}  CMP: {self.cmp}   BI: {visualize_path(best_invariant.path, self.dl)}  TO: {visualize_path(to, self.dl)}')
+        
+        return self.backtrack(theta_mcr, to)
         
     
-    def process(self, best_invariant, theta):
-        if self.is_discrete():
-            return self.process_leaf(theta)
-        else:
-            return self.process_node(best_invariant, theta)
+    def greatest_common_ancestor(self, other_node):
+        gca = []
+        for i in range(min(len(self.path), len(other_node.path))):
+            if self.path[i] == other_node.path[i]:
+                gca.append(self.path[i])
+            else:
+                return gca
+        return gca
     
-    def backup(self, theta):
-        # walk up the tree until we find a parent node that still has values to process i.e. W is not empty
-        curr = self        
-        while(curr is not None and len(curr.W) == 0):
-            # fixes = [curr.fix()]
-            curr.target_branch = -1
-            curr = curr.parent
+    
+    def backtrack(self, theta_mcr, to_path=None):
+        # # walk up the tree until we find a parent node that still has values to process i.e. W is not empty
+        # curr = self        
+        # while(curr is not None and len(curr.W) == 0):
+        #     # fixes = [curr.fix()]
+        #     curr.target_branch = -1
+        #     curr = curr.parent
             
-        # if curr is None, then we are done, otherwise...    
+        # # if curr is None, then we are done, otherwise...    
+        # if curr is not None:
+        #     # find fixes for automorphims in current tree
+        #     mcrs = []
+        #     for auto in theta:
+        #         amcr = []
+        #         inpath = True
+        #         for i in range(len(curr.path)):
+        #             if curr.path[i] != auto.path[i]:
+        #                 inpath = False
+        #                 break
+        #         if inpath:
+        #             # current_auto_position = auto
+        #             # while current_auto_position.path != curr.path:
+        #             #     fixes.append(current_auto_position.fix())   # swapping to new mcr...
+        #             #     # fixes.append(current_auto_position.mcr())
+        #             #     current_auto_position = current_auto_position.parent   
+        #             amcr = mcr(auto.permutation(best_invariant))
+        #             mcrs.append(amcr)
+        #         if self.debug: print(f'A {visualize_path(auto.path, self.dl)}   curr: {visualize_path(curr.path, self.dl)}  in?  {inpath}   mcr:  {visualize_path(amcr, self.dl)}')
+        #     curr.prune_automorphisms(mcrs)
+        if to_path is None:
+            if self.debug: print(f'B {visualize_path(self.path, self.dl)}   to: PARENT')
+            if self.parent is not None:
+                self.parent.prune_automorphisms(theta_mcr)
+            return self.parent
+        
+        if self.debug: print(f'B {visualize_path(self.path, self.dl)}   to: {visualize_path(to_path, self.dl)}')
+        curr = self
+        while curr is not None and curr.path != to_path:
+            curr = curr.parent
         if curr is not None:
-            # find fixes for automorphims in current tree
-            fixes = []
-            for auto in theta:
-                inpath = True
-                for i in range(len(curr.path)):
-                    if curr.path[i] != auto.path[i]:
-                        inpath = False
-                        break
-                if inpath:
-                    current_auto_position = auto
-                    while current_auto_position.path != curr.path:
-                        fixes.append(current_auto_position.fix())   # swapping to new mcr...
-                        # fixes.append(current_auto_position.mcr())
-                        current_auto_position = current_auto_position.parent                        
-                if self.debug: print(f'A {visualize_path(auto.path, self.dl)}   curr: {visualize_path(curr.path, self.dl)}  in?  {inpath}')
-            curr.prune_automorphisms(fixes)
+            curr.prune_automorphisms(theta_mcr)
         return curr
     
     
@@ -203,12 +250,11 @@ class path_node:
                 value.append(cell[0])
         return value
 
-    def prune_automorphisms(self, fixes):
+    def prune_automorphisms(self, theta_mcr):
         if self.prune_autos:
             old_W = self.W.copy()
-            for fix in fixes:
-                self.W = list(set(self.W) & set(fix))
-            # print(f'{visualize_path(self.path, self.dl)} PRUNE Fixes: {visualize_partition(fixes, self.dl)}  old W: {visualize_path(old_W, self.dl)}  W: {visualize_path(self.W, self.dl)}')
+            self.W = list(set(self.W) & set(theta_mcr))
+            if self.debug: print(f'P {visualize_path(self.path, self.dl)}   MCR: {visualize_path(theta_mcr, self.dl)}  old W: {visualize_path(old_W, self.dl)}  W: {visualize_path(self.W, self.dl)}')
 
     
     # def fixes(self):
@@ -220,9 +266,9 @@ class path_node:
     def visualize(self):
         cmp = self.cmp if self.is_discrete() else '-'
         print(f'V {visualize_path(self.path, self.dl)}  partion: {visualize_partition(self.partition, self.dl)}  cmp: {cmp}')
-        if cmp in [-1, 0]:
-            print(f'{visualize_partition(self.permutation(), self.dl)}')
-            print(f'{visualize_graph(self.invariant, self.dl)}')
+        # if cmp in [-1, 0]:
+        #     print(f'{visualize_partition(self.permutation(), self.dl)}')
+        #     print(f'{visualize_graph(self.invariant, self.dl)}')
 
         # print(f'\n{visualize_path(self.path, self.dl)}')
         # print(f'\tPartition: {visualize_partition(self.partition, self.dl)}')

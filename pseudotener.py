@@ -53,6 +53,8 @@ def main():
         
     for auto in labeler.automorphisms:
         print(f'Automorphism:  Path: {visualize_path(auto.path, labeler.dl)}  Auto Generator: {visualize_partition(auto.permutation(source=node_with_best_invariant), labeler.dl)}')
+        # print(f'\t{visualize_path(node_with_best_invariant.path, labeler.dl)} = {visualize_partition(node_with_best_invariant.partition, labeler.dl)}')
+        # print(f'\t{visualize_path(auto.path, labeler.dl)} = {visualize_partition(auto.partition, labeler.dl)}')
 
     print(f'Number of Nodes in Tree: {labeler.tree_size}   Total Processing Steps: {labeler.nodes_processed}')
     # print(visualize_graph(G, labeler.dl))

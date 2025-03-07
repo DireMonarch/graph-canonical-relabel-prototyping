@@ -1,28 +1,20 @@
 def visualize_graph(G, label=0):
     text = ''
-    # print('     ', end='')
     text += '     '
     for j in range(len(G[0])):
         cl = label + j if isinstance(label, int) else chr(ord(label)+j)
-        # print(f'{cl:^4}', end='')
         text += f'{cl:^4}'
-    # print('\n     ', end='')
     text += '\n     '
     
     for j in range(len(G[0])):
-        # print(f'----', end='')
         text += '----'
-    # print('')
     text += '\n'
 
     for i in range(len(G[0])):
         rl = label + i if isinstance(label, int) else chr(ord(label)+i)
-        # print(f'{rl:^4}|', end='')
         text += f'{rl:^4}|'
         for j in range(len(G[0])):
-            # print(f'{G[i][j]:^4}', end='')
             text += f'{G[i][j]:^4}'
-        # print('')
         text += '\n'
     return text
 

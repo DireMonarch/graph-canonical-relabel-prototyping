@@ -30,9 +30,18 @@ class path_node:
             curr.size += 1
             curr = curr.parent
         
-        self.debug = False
+        ###
+        #
+        # C for node Creation
+        # P for Process Node
+        # T for 'To' choice on which node to backtrack to
+        # B for Backtrack
+        # R for pRune 
+        #
+        ###
+        self.debug = ['R', 'B', 'P', 'C']
         
-        if self.debug: print(f'C {visualize_path(self.path, self.dl)}  partion: {visualize_partition(self.partition, self.dl)}  cmp: {self.cmp}')
+        # if 'C' in self.debug: print(f'C {visualize_path(self.path, self.dl)}  partion: {visualize_partition(self.partition, self.dl)}  cmp: {self.cmp}')
         
 
         
@@ -122,17 +131,11 @@ class path_node:
         
             
     def process_node(self, best_invariant, theta_mcr):
-        if self.debug: print(f'P {visualize_path(self.path, self.dl)}  tc {self.target_cell}, {visualize_path(self.partition[self.target_cell], self.dl) if self.target_cell > -1 else []}   W {visualize_path(self.W, self.dl)}')
         if self.target_cell == -1:
             self.target_cell = tc(self.partition)
             self.W = self.partition[self.target_cell].copy()
         
-        ## PRUNE
-        
-        # W = list(set(self.W) & set(mcr(theta)))
-        # if W != self.W:
-        #     if self.debug: print(f'R {visualize_path(self.path, self.dl)}  OLD: {visualize_path(self.W, self.dl)}  NEW: {visualize_path(W, self.dl)}')
-        #     self.W = W
+        if 'P' in self.debug: print(f'P {visualize_path(self.path, self.dl)}  tc {self.target_cell}, {visualize_path(self.partition[self.target_cell], self.dl) if self.target_cell > -1 else []}   W {visualize_path(self.W, self.dl)}')
         
         if len(self.W) == 0:
             return self.backtrack(theta_mcr)
@@ -141,7 +144,7 @@ class path_node:
         self.W.remove(self.target_branch)
         
         self.branches[self.target_branch] = path_node(self.G, self, self.target_branch, prune_autos=self.prune_autos)
-        # self.branches[self.target_branch].cmp = compare_invariant(self.branches[self.target_branch].invariant(), self.invariant())
+
         if self.branches[self.target_branch].is_discrete():
             if best_invariant is None:
                 self.branches[self.target_branch].cmp = -1
@@ -149,6 +152,8 @@ class path_node:
                 self.branches[self.target_branch].cmp = compare_invariant(self.branches[self.target_branch].invariant, best_invariant.invariant)
         else:
             self.branches[self.target_branch].cmp = 0
+        
+        if 'C' in self.debug: print(f'C {visualize_path(self.branches[self.target_branch].path, self.dl)}  partion: {visualize_partition(self.branches[self.target_branch].partition, self.dl)}  cmp: {self.branches[self.target_branch].cmp}')
         
         if self.branches[self.target_branch].cmp <= 0:
             return self.branches[self.target_branch]
@@ -168,9 +173,10 @@ class path_node:
             a deep copy of the leaf's partition (if it is min??)
             permutation of the current partition, which is an automorphism generator
         '''
+        if 'P' in self.debug: print(f'P {visualize_path(self.path, self.dl)}  LEAF')
         
         to = None if self.cmp == -1 else self.greatest_common_ancestor(best_invariant)
-        # if self.debug: print(f'T {visualize_path(self.path, self.dl)}  CMP: {self.cmp}   BI: {visualize_path(best_invariant.path, self.dl)}  TO: {visualize_path(to, self.dl)}')
+        if 'T' in self.debug: print(f'T {visualize_path(self.path, self.dl)}  CMP: {self.cmp}   BI: {visualize_path(best_invariant.path, self.dl)}  TO: {visualize_path(to, self.dl)}')
         
         return self.backtrack(theta_mcr, to)
         
@@ -186,41 +192,14 @@ class path_node:
     
     
     def backtrack(self, theta_mcr, to_path=None):
-        # # walk up the tree until we find a parent node that still has values to process i.e. W is not empty
-        # curr = self        
-        # while(curr is not None and len(curr.W) == 0):
-        #     # fixes = [curr.fix()]
-        #     curr.target_branch = -1
-        #     curr = curr.parent
-            
-        # # if curr is None, then we are done, otherwise...    
-        # if curr is not None:
-        #     # find fixes for automorphims in current tree
-        #     mcrs = []
-        #     for auto in theta:
-        #         amcr = []
-        #         inpath = True
-        #         for i in range(len(curr.path)):
-        #             if curr.path[i] != auto.path[i]:
-        #                 inpath = False
-        #                 break
-        #         if inpath:
-        #             # current_auto_position = auto
-        #             # while current_auto_position.path != curr.path:
-        #             #     fixes.append(current_auto_position.fix())   # swapping to new mcr...
-        #             #     # fixes.append(current_auto_position.mcr())
-        #             #     current_auto_position = current_auto_position.parent   
-        #             amcr = mcr(auto.permutation(best_invariant))
-        #             mcrs.append(amcr)
-        #         if self.debug: print(f'A {visualize_path(auto.path, self.dl)}   curr: {visualize_path(curr.path, self.dl)}  in?  {inpath}   mcr:  {visualize_path(amcr, self.dl)}')
-        #     curr.prune_automorphisms(mcrs)
+
         if to_path is None:
-            if self.debug: print(f'B {visualize_path(self.path, self.dl)}   to: PARENT')
+            if 'B' in self.debug: print(f'B {visualize_path(self.path, self.dl)}   to: PARENT')
             if self.parent is not None:
                 self.parent.prune_automorphisms(theta_mcr)
             return self.parent
         
-        if self.debug: print(f'B {visualize_path(self.path, self.dl)}   to: {visualize_path(to_path, self.dl)}')
+        if 'B' in self.debug: print(f'B {visualize_path(self.path, self.dl)}   to: {visualize_path(to_path, self.dl)}')
         curr = self
         while curr is not None and curr.path != to_path:
             curr = curr.parent
@@ -254,7 +233,7 @@ class path_node:
         if self.prune_autos:
             old_W = self.W.copy()
             self.W = list(set(self.W) & set(theta_mcr))
-            if self.debug: print(f'P {visualize_path(self.path, self.dl)}   MCR: {visualize_path(theta_mcr, self.dl)}  old W: {visualize_path(old_W, self.dl)}  W: {visualize_path(self.W, self.dl)}')
+            if 'R' in self.debug: print(f'R {visualize_path(self.path, self.dl)}   MCR: {visualize_path(theta_mcr, self.dl)}  old W: {visualize_path(old_W, self.dl)}  W: {visualize_path(self.W, self.dl)}')
 
     
     # def fixes(self):

@@ -49,7 +49,7 @@ def main():
     
     node_with_best_invariant = labeler.best_invar_node
     
-    print(f'\nIsomorphism:  Path: {visualize_path(node_with_best_invariant.path, labeler.dl)}   Permutation: {visualize_partition(node_with_best_invariant.permutation(), labeler.dl)}\n')
+    print(f'\nCanonical Label:  Path: {visualize_path(node_with_best_invariant.path, labeler.dl)}   Permutation: {visualize_partition(node_with_best_invariant.permutation(), labeler.dl)}')
         
     for auto in labeler.automorphisms:
         print(f'Automorphism:  Path: {visualize_path(auto.path, labeler.dl)}  Auto Generator: {visualize_partition(auto.permutation(source=node_with_best_invariant), labeler.dl)}')

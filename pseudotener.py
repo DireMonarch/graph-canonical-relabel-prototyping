@@ -4,6 +4,7 @@ import json
 # from path_node import path_node
 # from refiner import compare_invariant
 from canonical_labeler import canonical_labeler
+from permutation import generate_permutation
 
 # curr = path_node(None)
 
@@ -49,17 +50,12 @@ def main():
     
     node_with_best_invariant = labeler.best_invar_node
     
-    print(f'\nCanonical Label:  Path: {visualize_path(node_with_best_invariant.path, labeler.dl)}   Permutation: {visualize_partition(node_with_best_invariant.permutation(), labeler.dl)}')
+    print(f'\nCanonical Label:  Path: {visualize_path(node_with_best_invariant.path, labeler.dl)}   Permutation: {visualize_partition(node_with_best_invariant.get_permutation(), labeler.dl)}')
         
     for auto in labeler.automorphisms:
-        print(f'Automorphism:  Path: {visualize_path(auto.path, labeler.dl)}  Auto Generator: {visualize_partition(auto.permutation(source=node_with_best_invariant), labeler.dl)}')
-        # print(f'\t{visualize_path(node_with_best_invariant.path, labeler.dl)} = {visualize_partition(node_with_best_invariant.partition, labeler.dl)}')
-        # print(f'\t{visualize_path(auto.path, labeler.dl)} = {visualize_partition(auto.partition, labeler.dl)}')
+        print(f'Automorphism:  Path: {visualize_path(auto.path, labeler.dl)}  Auto Generator: {visualize_partition( generate_permutation(node_with_best_invariant.partition, auto.partition), labeler.dl)}')
 
     print(f'Number of Nodes in Tree: {labeler.tree_size}   Total Processing Steps: {labeler.nodes_processed}')
-    # print(visualize_graph(G, labeler.dl))
-    # print('\n')
-    # print(visualize_graph(labeler.CL, labeler.dl))
     
  
 if __name__ == '__main__':

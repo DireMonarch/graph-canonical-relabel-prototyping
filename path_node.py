@@ -2,6 +2,7 @@ import copy
 
 from utility import *
 from refiner import refine, is_discrete, compare_invariant, mcr, first_index_of_non_fixed_cell_of_smallest_size as tc
+from permutation import generate_permutation
 
 class path_node:
     def __init__(self, G, parent, last_hop, prune_autos=True):
@@ -49,59 +50,65 @@ class path_node:
     def is_discrete(self):
         return is_discrete(self.partition)
     
-    def permutation(self, source=None, debug=False):
-        if not self.is_discrete():
-            return []
+    def get_permutation(self):
+        src_part = [[i] for i in range(len(self.partition))]
+        return generate_permutation(src_part, self.partition)
+    
+    # def permutation(self, source=None, debug=False):
+    #     if not self.is_discrete():
+    #         return []
         
-        if source is not None and not source.is_discrete():
-            return []
+    #     if source is not None and not source.is_discrete():
+    #         return []
         
-        source_partition = source.partition if source is not None else [[i] for i in range(len(self.partition))]
+    #     source_partition = source.partition if source is not None else [[i] for i in range(len(self.partition))]
         
-        # Get pairwise swaps that don't really work, need to be combined
-        swaps = []
+    #     # Get pairwise swaps that don't really work, need to be combined
+    #     swaps = []
 
-        for i in range(len(self.partition)):
-            if self.partition[i] != source_partition[i]:
-                swap = [self.partition[i][0], source_partition[i][0]]
-                if swap not in swaps and [swap[1], swap[0]] not in swaps:
-                    swaps.append(swap)
+    #     for i in range(len(self.partition)):
+    #         if self.partition[i] != source_partition[i]:
+    #             swap = [self.partition[i][0], source_partition[i][0]]
+    #             if swap not in swaps and [swap[1], swap[0]] not in swaps:
+    #                 swaps.append(swap)
 
-        # Combine:
+    #     # Combine:
 
-        perm = []
-        curr_cell =[]
-        while len(swaps) > 0:
-            if len(curr_cell) == 0:
-                ## Cell is empty, grab next cell from swaps
-                curr_cell = swaps.pop(0)
-            else:
-                ## Cell is not empty, look for another cell in swaps that starts the last elemnt of cell
-                found_next = None
-                for swap_cell in swaps:
-                    if curr_cell[-1] == swap_cell[0]:
-                        found_next = swap_cell
-                        break
-                if found_next != None:
-                    if curr_cell[0] == found_next[1]:
-                        ## if we are here, then we found the end of the cycle
-                        perm.append(curr_cell)
-                        curr_cell = []
-                    else:
-                        curr_cell.append(found_next[1])   # add the next step to curr cell
-                    swaps.remove(found_next)  # remove the found cell from swaps
-                else:
-                    perm.append(curr_cell)  #if we are here, we didn't find another cell in the chain
-                    curr_cell = [] # Start a new cell for next round
-        if len(curr_cell) > 0:
-            perm.append(curr_cell)
+    #     perm = []
+    #     curr_cell =[]
+    #     while len(swaps) > 0:
+    #         if len(curr_cell) == 0:
+    #             ## Cell is empty, grab next cell from swaps
+    #             curr_cell = swaps.pop(0)
+    #         else:
+    #             ## Cell is not empty, look for another cell in swaps that starts the last elemnt of cell
+    #             found_next = None
+    #             for swap_cell in swaps:
+    #                 if curr_cell[-1] == swap_cell[0]:
+    #                     found_next = swap_cell
+    #                     break
+    #             if found_next != None:
+    #                 if curr_cell[0] == found_next[1]:
+    #                     ## if we are here, then we found the end of the cycle
+    #                     perm.append(curr_cell)
+    #                     curr_cell = []
+    #                 else:
+    #                     curr_cell.append(found_next[1])   # add the next step to curr cell
+    #                 swaps.remove(found_next)  # remove the found cell from swaps
+    #             else:
+    #                 perm.append(curr_cell)  #if we are here, we didn't find another cell in the chain
+    #                 curr_cell = [] # Start a new cell for next round
+    #     if len(curr_cell) > 0:
+    #         perm.append(curr_cell)
             
             
-        return perm       
+    #     return perm       
         
     
     def _calc_invariant(self):
-        perm = self.permutation()
+        # perm = self.permutation()
+        perm = self.get_permutation()
+
         inv = copy.deepcopy(self.G)
                        
         for p in perm:
@@ -207,27 +214,7 @@ class path_node:
             curr.prune_automorphisms(theta_mcr)
         return curr
     
-    
-    def mcr(self):
-        value = []
-        for cell in self.partition:
-            value.append(min(cell))
-        return value
 
-    # def mcrs(self):
-    #     value =[self.mcr()]
-    #     curr = self.parent
-    #     while curr is not None:
-    #         value.insert(0, curr.mcr())
-    #         curr = curr.parent
-    #     return value
-    
-    def fix(self):
-        value = []
-        for cell in self.partition:
-            if len(cell) == 1:
-                value.append(cell[0])
-        return value
 
     def prune_automorphisms(self, theta_mcr):
         if self.prune_autos:
@@ -236,27 +223,9 @@ class path_node:
             if 'R' in self.debug: print(f'R {visualize_path(self.path, self.dl)}   MCR: {visualize_path(theta_mcr, self.dl)}  old W: {visualize_path(old_W, self.dl)}  W: {visualize_path(self.W, self.dl)}')
 
     
-    # def fixes(self):
-    #     value = [self.fix()]
-    #     if self.parent is not None:
-    #         value = self.parent.fixes() + value
-    #     return value
     
     def visualize(self):
         cmp = self.cmp if self.is_discrete() else '-'
         print(f'V {visualize_path(self.path, self.dl)}  partion: {visualize_partition(self.partition, self.dl)}  cmp: {cmp}')
-        # if cmp in [-1, 0]:
-        #     print(f'{visualize_partition(self.permutation(), self.dl)}')
-        #     print(f'{visualize_graph(self.invariant, self.dl)}')
-
-        # print(f'\n{visualize_path(self.path, self.dl)}')
-        # print(f'\tPartition: {visualize_partition(self.partition, self.dl)}')
-        # # print(self.levelast_hop_from_parent)
-        # # print(f'\tLevel = {self.level},  Path: {path},  cmp: {self.cmp}')
-        # # print(f'\tW: {self.W}')
-        # # print(f'\tBest Invariant: {self.best_invariant}')
-        # # print(f'\tChildren Generated: {list(self.branches.keys())}')
-        # print(f'\tPermutation: {visualize_partition(self.permutation(), self.dl)}')
-        # print('')
 
 

@@ -1,6 +1,7 @@
 import utility
 from path_node import path_node
 from refiner import mcr, merge_permutation_into_orbit
+from permutation import generate_permutation
 
 class canonical_labeler:
     def __init__(self, G):
@@ -13,7 +14,6 @@ class canonical_labeler:
     def go(self):
         tree_root = path_node(self.G, None, None, prune_autos=self.prune_automorphisms)
         tree_root.dl = self.dl
-        # self.best_invar_node = tree_root
         self.best_invar_node = None
         curr = tree_root
         self.automorphisms = []
@@ -35,7 +35,7 @@ class canonical_labeler:
                 elif curr.cmp == 0:
                     ##   Found an automorphism
                     self.automorphisms.append(curr)
-                    self.theta = merge_permutation_into_orbit(curr.permutation(self.best_invar_node), self.theta)
+                    self.theta = merge_permutation_into_orbit(generate_permutation(self.best_invar_node.partition, curr.partition), self.theta)
                     self.theta_mcr = mcr(self.theta)
                     
         self.CL = self.best_invar_node.invariant
